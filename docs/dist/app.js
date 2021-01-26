@@ -69,11 +69,15 @@ export function App() {
       const body = new FormData();
       body.append("filename", fileName);
       body.append("filecontent", urlContent ?? fileContents);
-      const response = await fetch("https://sarif-pattern-matcher-internal-function.azurewebsites.net/api/analyze", {method: "POST", headers, body});
-      const responseJson = await response.json();
-      setFileName("");
-      setFileContents("");
-      setSarif(responseJson);
+      try {
+        const response = await fetch("https://sarif-pattern-matcher-internal-function.azurewebsites.net/api/analyze", {method: "POST", headers, body});
+        const responseJson = await response.json();
+        setFileName("");
+        setFileContents("");
+        setSarif(responseJson);
+      } catch (error) {
+        alert(error);
+      }
       setAnalyzing(false);
     }
   }, "Analyze ", fileName) : /* @__PURE__ */ React.createElement(Button, {
