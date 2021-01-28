@@ -33,11 +33,19 @@ export function App() {
   const [fileContents, setFileContents] = useState("");
   const [sarif, setSarif] = useHistoryState();
   useEffect(() => {
+    document.title = isAuthenticated ? "CredScan-on-Push Tester" : "";
+  }, [isAuthenticated]);
+  useEffect(() => {
     const fileName2 = tryURL(fileContents)?.pathname.split("/").pop();
     if (fileName2)
       setFileName(fileName2);
   }, [fileContents]);
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", {
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(UnauthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
+    className: "center"
+  }, /* @__PURE__ */ React.createElement(Button, {
+    primary: !!fileContents,
+    onClick: () => login(InteractionType.Popup, request)
+  }, "Sign in"))), /* @__PURE__ */ React.createElement(AuthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
     className: "intro"
   }, /* @__PURE__ */ React.createElement("div", {
     className: "introHeader"
@@ -83,12 +91,9 @@ export function App() {
   }, "Analyze ", fileName) : /* @__PURE__ */ React.createElement(Button, {
     className: "buttonAnalyze",
     onClick: async () => history.back()
-  }, "Clear"), /* @__PURE__ */ React.createElement(UnauthenticatedTemplate, null, /* @__PURE__ */ React.createElement(Button, {
-    primary: !!fileContents,
-    onClick: () => login(InteractionType.Popup, request)
-  }, "Sign in")), /* @__PURE__ */ React.createElement(AuthenticatedTemplate, null, /* @__PURE__ */ React.createElement(Button, {
+  }, "Clear"), /* @__PURE__ */ React.createElement(Button, {
     onClick: () => instance.logout()
-  }, "Sign out ", accounts[0]?.username))), /* @__PURE__ */ React.createElement("textarea", {
+  }, "Sign out ", accounts[0]?.username)), /* @__PURE__ */ React.createElement("textarea", {
     value: fileContents,
     spellCheck: "false",
     autoComplete: "off",
@@ -109,5 +114,5 @@ export function App() {
       Baseline: {value: ["new", "unchanged", "updated"]},
       Level: {value: ["error", "warning"]}
     }
-  })));
+  }))));
 }
