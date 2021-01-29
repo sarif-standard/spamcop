@@ -28,7 +28,7 @@ function asAzureUrl(url) {
     return void 0;
   const [_empty, organization, project, _git, repository] = url.pathname.split("/");
   const path = encodeURIComponent(url.searchParams.get("path") ?? "");
-  const commitOrBranch = url.searchParams.get("version").replace("GC", "");
+  const commitOrBranch = url.searchParams.get("version").replace("GB", "").replace("GC", "");
   return new URL(`https://dev.azure.com/${organization}/${project}/_apis/sourceProviders/tfsgit/filecontents?repository=${repository}&path=${path}&commitOrBranch=${commitOrBranch}&api-version=5.0-preview.1`);
 }
 const {Viewer} = swc;
