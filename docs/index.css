@@ -56,7 +56,7 @@ body {
 	padding-top: 8px;
 }
 
-.introHeader .bolt-button {
+.introHeader *:not(:first-child) {
 	margin-left: 12px;
 }
 
