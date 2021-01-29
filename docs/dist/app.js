@@ -57,15 +57,26 @@ export function App() {
       let urlFileName = void 0;
       let urlContent = void 0;
       try {
-        const url = tryURL(fileContents);
+        let url = tryURL(fileContents);
         if (!url)
           throw new Error("URL is empty");
-        const urlResponse = await fetch(url.toString());
+        const headers2 = new Headers();
+        if (url.hostname === "dev.azure.com") {
+          const [_empty, organization, project, _git, repository] = url.pathname.split("/");
+          const path = encodeURIComponent(url.searchParams.get("path") ?? "");
+          const commitOrBranch = url.searchParams.get("version").replace("GC", "");
+          url = new URL(`https://dev.azure.com/${organization}/${project}/_apis/sourceProviders/tfsgit/filecontents?repository=${repository}&path=${path}&commitOrBranch=${commitOrBranch}&api-version=5.0-preview.1`);
+          headers2.set("Authorization", `Basic ${btoa(`${localStorage.getItem("username")}:${localStorage.getItem("password")}`)}`);
+        }
+        if (!url)
+          throw new Error("URL is empty");
+        const urlResponse = await fetch(url.toString(), {headers: headers2});
         urlFileName = url.pathname.split("/").pop();
         urlContent = await urlResponse.text();
       } catch (_) {
       }
       setAnalyzing(true);
+      const intervalID = setInterval(() => console.log("waiting..."), 5e3);
       const headers = new Headers();
       if (isAuthenticated) {
         const tokenResponse = await instance.acquireTokenSilent({
@@ -86,6 +97,7 @@ export function App() {
       } catch (error) {
         alert(error);
       }
+      clearInterval(intervalID);
       setAnalyzing(false);
     }
   }, "Analyze ", fileName) : /* @__PURE__ */ React.createElement(Button, {
