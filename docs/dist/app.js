@@ -23,6 +23,14 @@ function tryURL(url) {
   }
   return void 0;
 }
+function asAzureUrl(url) {
+  if (url.hostname !== "dev.azure.com")
+    return void 0;
+  const [_empty, organization, project, _git, repository] = url.pathname.split("/");
+  const path = encodeURIComponent(url.searchParams.get("path") ?? "");
+  const commitOrBranch = url.searchParams.get("version").replace("GC", "");
+  return new URL(`https://dev.azure.com/${organization}/${project}/_apis/sourceProviders/tfsgit/filecontents?repository=${repository}&path=${path}&commitOrBranch=${commitOrBranch}&api-version=5.0-preview.1`);
+}
 const {Viewer} = swc;
 export function App() {
   const isAuthenticated = useIsAuthenticated();
@@ -36,7 +44,9 @@ export function App() {
     document.title = isAuthenticated ? "CredScan-on-Push Tester" : "";
   }, [isAuthenticated]);
   useEffect(() => {
-    const fileName2 = tryURL(fileContents)?.pathname.split("/").pop();
+    const url = tryURL(fileContents);
+    const fileName2 = url?.hostname === "dev.azure.com" && url?.searchParams.get("path")?.split("/").pop() || url?.pathname.split("/").pop();
+    console.log(fileName2);
     if (fileName2)
       setFileName(fileName2);
   }, [fileContents]);
@@ -57,20 +67,15 @@ export function App() {
       let urlFileName = void 0;
       let urlContent = void 0;
       try {
-        let url = tryURL(fileContents);
+        const headers2 = new Headers();
+        const url = tryURL(fileContents);
         if (!url)
           throw new Error("URL is empty");
-        const headers2 = new Headers();
-        if (url.hostname === "dev.azure.com") {
-          const [_empty, organization, project, _git, repository] = url.pathname.split("/");
-          const path = encodeURIComponent(url.searchParams.get("path") ?? "");
-          const commitOrBranch = url.searchParams.get("version").replace("GC", "");
-          url = new URL(`https://dev.azure.com/${organization}/${project}/_apis/sourceProviders/tfsgit/filecontents?repository=${repository}&path=${path}&commitOrBranch=${commitOrBranch}&api-version=5.0-preview.1`);
+        const azureUrl = asAzureUrl(url);
+        if (azureUrl) {
           headers2.set("Authorization", `Basic ${btoa(`${localStorage.getItem("username")}:${localStorage.getItem("password")}`)}`);
         }
-        if (!url)
-          throw new Error("URL is empty");
-        const urlResponse = await fetch(url.toString(), {headers: headers2});
+        const urlResponse = await fetch(azureUrl?.toString() ?? url.toString(), {headers: headers2});
         urlFileName = url.pathname.split("/").pop();
         urlContent = await urlResponse.text();
       } catch (_) {
