@@ -46,7 +46,6 @@ export function App() {
   useEffect(() => {
     const url = tryURL(fileContents);
     const fileName2 = url?.hostname === "dev.azure.com" && url?.searchParams.get("path")?.split("/").pop() || url?.pathname.split("/").pop();
-    console.log(fileName2);
     if (fileName2)
       setFileName(fileName2);
   }, [fileContents]);
@@ -64,11 +63,11 @@ export function App() {
     primary: true,
     disabled: !isAuthenticated || !fileContents || analyzing,
     onClick: async () => {
+      const url = tryURL(fileContents);
       let urlFileName = void 0;
       let urlContent = void 0;
       try {
         const headers2 = new Headers();
-        const url = tryURL(fileContents);
         if (!url)
           throw new Error("URL is empty");
         const azureUrl = asAzureUrl(url);
@@ -96,6 +95,34 @@ export function App() {
       try {
         const response = await fetch("https://sarif-pattern-matcher-internal-function.azurewebsites.net/api/analyze", {method: "POST", headers, body});
         const responseJson = await response.json();
+        if (url?.hostname === "dev.azure.com") {
+          responseJson?.runs?.forEach((run) => {
+            run.results?.forEach((result) => {
+              result.locations?.forEach((location) => {
+                const region = location.physicalLocation?.region;
+                const artifactLocation = location.physicalLocation?.artifactLocation;
+                if (artifactLocation) {
+                  const urlWithRegion = new URL(url.toString());
+                  if (region) {
+                    function setOrDelete(params, key, value) {
+                      if (value === void 0 || Number.isNaN(value)) {
+                        params.delete(key);
+                      } else {
+                        params.set(key, `${value}`);
+                      }
+                    }
+                    setOrDelete(urlWithRegion.searchParams, "line", region.startLine);
+                    setOrDelete(urlWithRegion.searchParams, "lineEnd", region.endLine);
+                    setOrDelete(urlWithRegion.searchParams, "lineStartColumn", region.startColumn);
+                    setOrDelete(urlWithRegion.searchParams, "lineEndColumn", region.endColumn);
+                  }
+                  artifactLocation.properties = artifactLocation.properties ?? {};
+                  artifactLocation.properties["href"] = urlWithRegion.toString();
+                }
+              });
+            });
+          });
+        }
         setFileName("");
         setFileContents("");
         setSarif(responseJson);
