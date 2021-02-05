@@ -5,9 +5,6 @@ import {Button} from "../web_modules/azure-devops-ui/Button.js";
 import {Spinner} from "../web_modules/azure-devops-ui/Spinner.js";
 import React, {useEffect, useState} from "../web_modules/react.js";
 import {useHistoryState} from "./useHistoryState.js";
-const request = {
-  scopes: ["api://f42dbafe-6e53-4dce-b025-cc4df39fb5cc/Ruleset.read"]
-};
 const readAsText = (file) => new Promise((resolve, reject) => {
   let reader = new FileReader();
   reader.onload = () => resolve(reader.result);
@@ -35,7 +32,7 @@ const {Viewer} = swc;
 export function App() {
   const isAuthenticated = useIsAuthenticated();
   const {instance, accounts} = useMsal();
-  const {login} = useMsalAuthentication(InteractionType.Silent, request);
+  const {login} = useMsalAuthentication(InteractionType.Silent, {scopes: []});
   const [analyzing, setAnalyzing] = useState(false);
   const [fileName, setFileName] = useState("");
   const [fileContents, setFileContents] = useState("");
@@ -53,7 +50,7 @@ export function App() {
     className: "center"
   }, /* @__PURE__ */ React.createElement(Button, {
     primary: !!fileContents,
-    onClick: () => login(InteractionType.Popup, request)
+    onClick: () => login(InteractionType.Popup, {scopes: []})
   }, "Sign in"))), /* @__PURE__ */ React.createElement(AuthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
     className: "intro"
   }, /* @__PURE__ */ React.createElement("div", {
@@ -72,7 +69,11 @@ export function App() {
           throw new Error("URL is empty");
         const azureUrl = asAzureUrl(url);
         if (azureUrl) {
-          headers2.set("Authorization", `Basic ${btoa(`${localStorage.getItem("username")}:${localStorage.getItem("password")}`)}`);
+          const {accessToken} = await instance.acquireTokenSilent({
+            account: instance.getAllAccounts()[0],
+            scopes: ["499b84ac-1321-427f-aa17-267ca6975798/user_impersonation"]
+          });
+          headers2.set("Authorization", `Bearer ${accessToken}`);
         }
         const urlResponse = await fetch(azureUrl?.toString() ?? url.toString(), {headers: headers2});
         urlFileName = url.pathname.split("/").pop();
@@ -85,7 +86,7 @@ export function App() {
       if (isAuthenticated) {
         const tokenResponse = await instance.acquireTokenSilent({
           account: instance.getAllAccounts()[0],
-          ...request
+          scopes: ["api://f42dbafe-6e53-4dce-b025-cc4df39fb5cc/Ruleset.read"]
         });
         headers.append("Authorization", `Bearer ${tokenResponse.accessToken}`);
       }
