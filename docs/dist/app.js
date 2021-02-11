@@ -20,8 +20,10 @@ function tryURL(url) {
   }
   return void 0;
 }
-function asAzureUrl(url) {
+function asAzureFileContentsUrl(url) {
   if (url.hostname !== "dev.azure.com")
+    return void 0;
+  if (!url.searchParams.has("version"))
     return void 0;
   const [_empty, organization, project, _git, repository] = url.pathname.split("/");
   const path = encodeURIComponent(url.searchParams.get("path") ?? "");
@@ -67,15 +69,14 @@ export function App() {
         const headers2 = new Headers();
         if (!url)
           throw new Error("URL is empty");
-        const azureUrl = asAzureUrl(url);
-        if (azureUrl) {
+        if (url.hostname === "dev.azure.com") {
           const {accessToken} = await instance.acquireTokenSilent({
             account: instance.getAllAccounts()[0],
             scopes: ["499b84ac-1321-427f-aa17-267ca6975798/user_impersonation"]
           });
           headers2.set("Authorization", `Bearer ${accessToken}`);
         }
-        const urlResponse = await fetch(azureUrl?.toString() ?? url.toString(), {headers: headers2});
+        const urlResponse = await fetch(asAzureFileContentsUrl(url)?.toString() ?? url.toString(), {headers: headers2});
         urlFileName = url.pathname.split("/").pop();
         urlContent = await urlResponse.text();
       } catch (_) {
@@ -91,7 +92,7 @@ export function App() {
         headers.append("Authorization", `Bearer ${tokenResponse.accessToken}`);
       }
       const body = new FormData();
-      body.append("filename", fileName);
+      body.append("filename", urlFileName ?? fileName);
       body.append("filecontent", urlContent ?? fileContents);
       try {
         const response = await fetch("https://sarif-pattern-matcher-internal-function.azurewebsites.net/api/analyze", {method: "POST", headers, body});
@@ -157,7 +158,7 @@ export function App() {
     logs: sarif && [sarif],
     filterState: {
       Baseline: {value: ["new", "unchanged", "updated"]},
-      Level: {value: ["error", "warning"]}
+      Level: {value: ["error"]}
     }
   }))));
 }
