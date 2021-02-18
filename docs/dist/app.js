@@ -77,6 +77,10 @@ export function App() {
           headers2.set("Authorization", `Bearer ${accessToken}`);
         }
         const urlResponse = await fetch(asAzureFileContentsUrl(url)?.toString() ?? url.toString(), {headers: headers2});
+        const contentType = urlResponse.headers.get("Content-Type");
+        if (contentType?.startsWith("application/json;") && !url.pathname.match(/\.json$/i)) {
+          url.pathname += ".json";
+        }
         urlFileName = url.pathname.split("/").pop();
         urlContent = await urlResponse.text();
       } catch (_) {
