@@ -159,6 +159,7 @@ export function App() {
     filterState: {
       Baseline: {value: ["new", "unchanged", "updated"]},
       Level: {value: ["error"]}
-    }
+    },
+    successMessage: "No validated credentials detected."
   }))));
 }
