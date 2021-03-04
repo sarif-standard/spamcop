@@ -30,6 +30,7 @@ function asAzureFileContentsUrl(url) {
   const commitOrBranch = url.searchParams.get("version").replace("GB", "").replace("GC", "");
   return new URL(`https://dev.azure.com/${organization}/${project}/_apis/sourceProviders/tfsgit/filecontents?repository=${repository}&path=${path}&commitOrBranch=${commitOrBranch}&api-version=5.0-preview.1`);
 }
+const params = new URLSearchParams(window.location.search);
 const {Viewer} = swc;
 export function App() {
   const isAuthenticated = useIsAuthenticated();
@@ -37,7 +38,7 @@ export function App() {
   const {login} = useMsalAuthentication(InteractionType.Silent, {scopes: []});
   const [analyzing, setAnalyzing] = useState(false);
   const [fileName, setFileName] = useState("");
-  const [fileContents, setFileContents] = useState("");
+  const [fileContents, setFileContents] = useState(params.get("fileContents") ?? "");
   const [sarif, setSarif] = useHistoryState();
   useEffect(() => {
     document.title = isAuthenticated ? "CredScan-on-Push Tester" : "";
@@ -110,11 +111,11 @@ export function App() {
                 if (artifactLocation) {
                   const urlWithRegion = new URL(url.toString());
                   if (region) {
-                    function setOrDelete(params, key, value) {
+                    function setOrDelete(params2, key, value) {
                       if (value === void 0 || Number.isNaN(value)) {
-                        params.delete(key);
+                        params2.delete(key);
                       } else {
-                        params.set(key, `${value}`);
+                        params2.set(key, `${value}`);
                       }
                     }
                     setOrDelete(urlWithRegion.searchParams, "line", region.startLine);
