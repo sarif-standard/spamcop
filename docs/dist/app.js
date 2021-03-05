@@ -49,6 +49,19 @@ export function App() {
     if (fileName2)
       setFileName(fileName2);
   }, [fileContents]);
+  const handleMessage = (event) => {
+    const validOrigins = [
+      "http://localhost:8080",
+      "https://sarif-standard.github.io"
+    ];
+    if (!validOrigins.includes(event.origin))
+      return;
+    setFileContents(event.data);
+  };
+  useEffect(() => {
+    addEventListener("message", handleMessage);
+    return () => removeEventListener("message", handleMessage);
+  });
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(UnauthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
     className: "center"
   }, /* @__PURE__ */ React.createElement(Button, {
