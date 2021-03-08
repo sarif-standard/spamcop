@@ -41,7 +41,7 @@ export function App() {
   const [fileContents, setFileContents] = useState(params.get("fileContents") ?? "");
   const [sarif, setSarif] = useHistoryState();
   useEffect(() => {
-    document.title = isAuthenticated ? "CredScan-on-Push Tester" : "";
+    document.title = isAuthenticated ? "1ES Live Secrets Real-Time Checker" : "";
   }, [isAuthenticated]);
   useEffect(() => {
     const url = tryURL(fileContents);
@@ -71,7 +71,7 @@ export function App() {
     className: "intro"
   }, /* @__PURE__ */ React.createElement("div", {
     className: "introHeader"
-  }, /* @__PURE__ */ React.createElement("h1", null, "CredScan-on-Push Tester"), analyzing && /* @__PURE__ */ React.createElement(Spinner, null), !sarif ? /* @__PURE__ */ React.createElement(Button, {
+  }, /* @__PURE__ */ React.createElement("h1", null, "1ES Live Secrets Real-Time Checker"), analyzing && /* @__PURE__ */ React.createElement(Spinner, null), !sarif ? /* @__PURE__ */ React.createElement(Button, {
     className: "buttonAnalyze",
     primary: true,
     disabled: !isAuthenticated || !fileContents || analyzing,
