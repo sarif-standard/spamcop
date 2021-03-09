@@ -41,15 +41,14 @@ export function App() {
   const [fileContents, setFileContents] = useState(params.get("fileContents") ?? "");
   const [sarif, setSarif] = useHistoryState();
   useEffect(() => {
-    document.title = isAuthenticated ? "1ES Live Secrets Real-Time Checker" : "";
-  }, [isAuthenticated]);
-  useEffect(() => {
     const url = tryURL(fileContents);
     const fileName2 = url?.hostname === "dev.azure.com" && url?.searchParams.get("path")?.split("/").pop() || url?.pathname.split("/").pop();
     if (fileName2)
       setFileName(fileName2);
   }, [fileContents]);
   const handleMessage = (event) => {
+    if (typeof event.data !== "string")
+      return;
     const validOrigins = [
       "http://localhost:8080",
       "https://sarif-standard.github.io"
@@ -65,13 +64,13 @@ export function App() {
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(UnauthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
     className: "center"
   }, /* @__PURE__ */ React.createElement(Button, {
-    primary: !!fileContents,
+    primary: true,
     onClick: () => login(InteractionType.Popup, {scopes: []})
   }, "Sign in"))), /* @__PURE__ */ React.createElement(AuthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
     className: "intro"
   }, /* @__PURE__ */ React.createElement("div", {
     className: "introHeader"
-  }, /* @__PURE__ */ React.createElement("h1", null, "1ES Live Secrets Real-Time Checker"), analyzing && /* @__PURE__ */ React.createElement(Spinner, null), !sarif ? /* @__PURE__ */ React.createElement(Button, {
+  }, /* @__PURE__ */ React.createElement("h1", null, document.title), analyzing && /* @__PURE__ */ React.createElement(Spinner, null), !sarif ? /* @__PURE__ */ React.createElement(Button, {
     className: "buttonAnalyze",
     primary: true,
     disabled: !isAuthenticated || !fileContents || analyzing,
