@@ -184,6 +184,6 @@ export function App() {
       Baseline: {value: ["new", "unchanged", "updated"]},
       Level: {value: ["error"]}
     },
-    successMessage: "No validated credentials detected."
+    successMessage: "No live secrets detected."
   }))));
 }
