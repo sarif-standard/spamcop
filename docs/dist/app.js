@@ -37,6 +37,7 @@ export function App() {
   const {instance, accounts} = useMsal();
   const {login} = useMsalAuthentication(InteractionType.Silent, {scopes: []});
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeAfterAuthenticated, setAnalyzeAfterAuthenticated] = useState(false);
   const [fileName, setFileName] = useState("");
   const [fileContents, setFileContents] = useState(params.get("fileContents") ?? "");
   const [sarif, setSarif] = useHistoryState();
@@ -46,6 +47,83 @@ export function App() {
     if (fileName2)
       setFileName(fileName2);
   }, [fileContents]);
+  async function analyze() {
+    setAnalyzing(true);
+    const intervalID = setInterval(() => console.log("waiting..."), 5e3);
+    const url = tryURL(fileContents);
+    let urlFileName = void 0;
+    let urlContent = void 0;
+    try {
+      const headers2 = new Headers();
+      if (!url)
+        throw new Error("URL is empty");
+      if (url.hostname === "dev.azure.com") {
+        const {accessToken} = await instance.acquireTokenSilent({
+          account: instance.getAllAccounts()[0],
+          scopes: ["499b84ac-1321-427f-aa17-267ca6975798/user_impersonation"]
+        });
+        headers2.set("Authorization", `Bearer ${accessToken}`);
+      }
+      const urlResponse = await fetch(asAzureFileContentsUrl(url)?.toString() ?? url.toString(), {headers: headers2});
+      const contentType = urlResponse.headers.get("Content-Type");
+      if (contentType?.startsWith("application/json;") && !url.pathname.match(/\.json$/i)) {
+        url.pathname += ".json";
+      }
+      urlFileName = url.pathname.split("/").pop();
+      urlContent = await urlResponse.text();
+    } catch (_) {
+    }
+    const headers = new Headers();
+    if (isAuthenticated) {
+      const tokenResponse = await instance.acquireTokenSilent({
+        account: instance.getAllAccounts()[0],
+        scopes: ["api://f42dbafe-6e53-4dce-b025-cc4df39fb5cc/Ruleset.read"]
+      });
+      headers.append("Authorization", `Bearer ${tokenResponse.accessToken}`);
+    }
+    const body = new FormData();
+    body.append("filename", urlFileName ?? fileName);
+    body.append("filecontent", urlContent ?? fileContents);
+    try {
+      const response = await fetch("https://sarif-pattern-matcher-internal-function.azurewebsites.net/api/analyze", {method: "POST", headers, body});
+      const responseJson = await response.json();
+      if (url?.hostname === "dev.azure.com") {
+        responseJson?.runs?.forEach((run) => {
+          run.results?.forEach((result) => {
+            result.locations?.forEach((location) => {
+              const region = location.physicalLocation?.region;
+              const artifactLocation = location.physicalLocation?.artifactLocation;
+              if (artifactLocation) {
+                const urlWithRegion = new URL(url.toString());
+                if (region) {
+                  function setOrDelete(params2, key, value) {
+                    if (value === void 0 || Number.isNaN(value)) {
+                      params2.delete(key);
+                    } else {
+                      params2.set(key, `${value}`);
+                    }
+                  }
+                  setOrDelete(urlWithRegion.searchParams, "line", region.startLine);
+                  setOrDelete(urlWithRegion.searchParams, "lineEnd", region.endLine);
+                  setOrDelete(urlWithRegion.searchParams, "lineStartColumn", region.startColumn);
+                  setOrDelete(urlWithRegion.searchParams, "lineEndColumn", region.endColumn);
+                }
+                artifactLocation.properties = artifactLocation.properties ?? {};
+                artifactLocation.properties["href"] = urlWithRegion.toString();
+              }
+            });
+          });
+        });
+      }
+      setFileName("");
+      setFileContents("");
+      setSarif(responseJson);
+    } catch (error) {
+      alert(error);
+    }
+    clearInterval(intervalID);
+    setAnalyzing(false);
+  }
   const handleMessage = (event) => {
     if (typeof event.data !== "string")
       return;
@@ -56,11 +134,16 @@ export function App() {
     if (!validOrigins.includes(event.origin))
       return;
     setFileContents(event.data);
+    setAnalyzeAfterAuthenticated(true);
   };
   useEffect(() => {
     addEventListener("message", handleMessage);
     return () => removeEventListener("message", handleMessage);
   });
+  if (analyzeAfterAuthenticated && isAuthenticated) {
+    setAnalyzeAfterAuthenticated(false);
+    analyze();
+  }
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(UnauthenticatedTemplate, null, /* @__PURE__ */ React.createElement("div", {
     className: "center"
   }, /* @__PURE__ */ React.createElement(Button, {
@@ -74,83 +157,7 @@ export function App() {
     className: "buttonAnalyze",
     primary: true,
     disabled: !isAuthenticated || !fileContents || analyzing,
-    onClick: async () => {
-      const url = tryURL(fileContents);
-      let urlFileName = void 0;
-      let urlContent = void 0;
-      try {
-        const headers2 = new Headers();
-        if (!url)
-          throw new Error("URL is empty");
-        if (url.hostname === "dev.azure.com") {
-          const {accessToken} = await instance.acquireTokenSilent({
-            account: instance.getAllAccounts()[0],
-            scopes: ["499b84ac-1321-427f-aa17-267ca6975798/user_impersonation"]
-          });
-          headers2.set("Authorization", `Bearer ${accessToken}`);
-        }
-        const urlResponse = await fetch(asAzureFileContentsUrl(url)?.toString() ?? url.toString(), {headers: headers2});
-        const contentType = urlResponse.headers.get("Content-Type");
-        if (contentType?.startsWith("application/json;") && !url.pathname.match(/\.json$/i)) {
-          url.pathname += ".json";
-        }
-        urlFileName = url.pathname.split("/").pop();
-        urlContent = await urlResponse.text();
-      } catch (_) {
-      }
-      setAnalyzing(true);
-      const intervalID = setInterval(() => console.log("waiting..."), 5e3);
-      const headers = new Headers();
-      if (isAuthenticated) {
-        const tokenResponse = await instance.acquireTokenSilent({
-          account: instance.getAllAccounts()[0],
-          scopes: ["api://f42dbafe-6e53-4dce-b025-cc4df39fb5cc/Ruleset.read"]
-        });
-        headers.append("Authorization", `Bearer ${tokenResponse.accessToken}`);
-      }
-      const body = new FormData();
-      body.append("filename", urlFileName ?? fileName);
-      body.append("filecontent", urlContent ?? fileContents);
-      try {
-        const response = await fetch("https://sarif-pattern-matcher-internal-function.azurewebsites.net/api/analyze", {method: "POST", headers, body});
-        const responseJson = await response.json();
-        if (url?.hostname === "dev.azure.com") {
-          responseJson?.runs?.forEach((run) => {
-            run.results?.forEach((result) => {
-              result.locations?.forEach((location) => {
-                const region = location.physicalLocation?.region;
-                const artifactLocation = location.physicalLocation?.artifactLocation;
-                if (artifactLocation) {
-                  const urlWithRegion = new URL(url.toString());
-                  if (region) {
-                    function setOrDelete(params2, key, value) {
-                      if (value === void 0 || Number.isNaN(value)) {
-                        params2.delete(key);
-                      } else {
-                        params2.set(key, `${value}`);
-                      }
-                    }
-                    setOrDelete(urlWithRegion.searchParams, "line", region.startLine);
-                    setOrDelete(urlWithRegion.searchParams, "lineEnd", region.endLine);
-                    setOrDelete(urlWithRegion.searchParams, "lineStartColumn", region.startColumn);
-                    setOrDelete(urlWithRegion.searchParams, "lineEndColumn", region.endColumn);
-                  }
-                  artifactLocation.properties = artifactLocation.properties ?? {};
-                  artifactLocation.properties["href"] = urlWithRegion.toString();
-                }
-              });
-            });
-          });
-        }
-        setFileName("");
-        setFileContents("");
-        setSarif(responseJson);
-      } catch (error) {
-        alert(error);
-      }
-      clearInterval(intervalID);
-      setAnalyzing(false);
-    }
+    onClick: analyze
   }, "Analyze ", fileName) : /* @__PURE__ */ React.createElement(Button, {
     className: "buttonAnalyze",
     onClick: async () => history.back()
