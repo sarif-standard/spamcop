@@ -184,6 +184,6 @@ export function App() {
       Baseline: {value: ["new", "unchanged", "updated"]},
       Level: {value: ["error"]}
     },
-    successMessage: "No live secrets detected."
+    successMessage: "Real-time scanning completed and no live secrets were detected."
   }))));
 }
