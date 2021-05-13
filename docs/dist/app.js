@@ -57,6 +57,8 @@ export function App() {
       const headers2 = new Headers();
       if (!url)
         throw new Error("URL is empty");
+      if (url.href.startsWith("https://sarif-standard.github.io/1esnightlyscan"))
+        throw new Error("Temporary skip Nightly Scan.");
       if (url.hostname === "dev.azure.com") {
         const {accessToken} = await instance.acquireTokenSilent({
           account: instance.getAllAccounts()[0],
