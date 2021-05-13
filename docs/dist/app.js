@@ -186,6 +186,12 @@ export function App() {
       Baseline: {value: ["new", "unchanged", "updated"]},
       Level: {value: ["error"]}
     },
-    successMessage: "Real-time scanning completed and no live secrets were detected."
+    successMessage: "Real-time scanning completed and no live secrets were detected.",
+    onSnippetAction: (result) => {
+      const hash = result.fingerprints?.["ValidationFingerprintHash/v1"];
+      if (!hash)
+        return;
+      window.open(`https://sarif-standard.github.io/1esnightlyscan/?secretHash=${hash}`);
+    }
   }))));
 }
